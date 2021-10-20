@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { VAceEditor } from 'vue3-ace-editor';
 import 'ace-builds/src-noconflict/mode-json5';
@@ -52,40 +52,29 @@ const finalUrl = computed(() => {
     return uri;
 });
 
-// -- watchers
-
-// >> add path variables
-watch(url, () => {
-    paramCheck();
-});
-
-const paramCheck = () => {
-    const uri = url.value;
-    if (!uri.startsWith('http')) return params.value = [];
-    if (!uri.split("/").some(x => x.startsWith(":"))) return params.value = [];
-    // if variable start with : and ends with /
-    const updated = [];
-    uri.split('/').filter(e => e.startsWith(':'))
-        .forEach(e => {
-            if (!uri.endsWith('/')) return
-            updated.push({
-                key: e,
-                value: 'value',
-            });
-            params.value = updated;
-        });
-}
-
 // -- arrays
 
 const headers = ref([
+    {
+        key: 'Accept',
+        value: 'application/json',
+    },
     {
         key: 'Content-Type',
         value: 'application/json',
     },
 ]);
 
-const params = ref([]);
+const params = ref([
+    {
+        key: ':page',
+        value: '1',
+    },
+    {
+        key: 'per_page',
+        value: '106',
+    },
+]);
 
 // -- selector functions
 
@@ -111,9 +100,8 @@ const editHeader = (e) => {
     // on submit, edit the header to the array
 }
 
-const removeHeader = (key, index) => {
+const removeHeader = (e) => {
     // remove a header from the array
-    headers.value = headers.value.filter(header => header.key !== key);
 }
 
 const addParam = (e) => {
@@ -130,31 +118,14 @@ const editParam = (e) => {
     // on submit, edit the param to the array
 }
 
-const removeParam = (key, index) => {
+const removeParam = (e) => {
     // remove a param from the array
-    params.value = params.value.filter(param => param.key !== key);
 }
 
-const send = async () => {
-    const reqHeaders = {};
-    headers.value.forEach(header => {
-        reqHeaders[header.key] = header.value;
-    });
-    let req
-    if (method.value == 'GET') {
-        req = await fetch(finalUrl.value, {
-            method: method.value,
-            headers: reqHeaders,
-        });
-    } else {
-        req = await fetch(finalUrl.value, {
-            method: method.value,
-            headers: reqHeaders,
-            body: content.value,
-        });
-    }
-    const res = await req.json();
-    router.push({ name: 'Response', params: { response: JSON.stringify(res, null, 2) } });
+const send = () => {
+    // send the request
+    // on success, show response = on error, show error
+    router.push({ name: 'response' });
 }
 
 </script>
@@ -165,13 +136,8 @@ const send = async () => {
         <div class="urlbar">
             <h2>URL</h2>
             <div class="input">
-                <input
-                    type="text"
-                    v-model="url"
-                    @keydown="paramCheck"
-                    placeholder="https://example.com/v1/api/route/:id"
-                />
-                <button @click="send">
+                <input type="text" v-model="url" placeholder="https://example.com/v1/api/route/:id" />
+                <button>
                     <ion-icon name="send"></ion-icon>
                 </button>
             </div>
@@ -227,11 +193,11 @@ const send = async () => {
                 <ion-icon v-else @click.stop="showParams = true" name="caret-up-outline"></ion-icon>
             </h2>
             <transition name="slide-down" appear>
-                <div v-if="showParams && url" class="params">
+                <div v-if="showParams" class="params">
                     <transition-group name="slide-down">
                         <div
                             v-for="(param, index) in params"
-                            :key="param"
+                            :key="index"
                             class="param"
                             @click="editParam(param.key, index)"
                         >
@@ -256,6 +222,7 @@ const send = async () => {
                 </select>
             </div>
             <div v-if="body == 'true'" class="json">
+                <!-- <textarea></textarea> -->
                 <v-ace-editor
                     v-model:value="content"
                     @init="editorInit"
@@ -265,7 +232,7 @@ const send = async () => {
                 />
             </div>
         </div>
-        <button v-if="url" @click="send" class="send">SEND REQUEST</button>
+        <button @click="send" class="send">SEND REQUEST</button>
     </div>
 </template>
 
@@ -317,7 +284,6 @@ h2 {
             border: none;
             border-radius: 5px;
             width: 15%;
-            cursor: pointer;
         }
     }
 }
@@ -410,6 +376,21 @@ h2 {
 }
 .json {
     margin-top: 10px;
+    textarea {
+        width: 100%;
+        min-height: 50px;
+        padding: 10px;
+        resize: vertical;
+        font-family: "Heebo", sans-serif;
+        background: $accent;
+        border: none;
+        border-radius: 10px;
+        margin-top: 10px;
+        color: #fff;
+        &:focus {
+            outline: 2px solid #ffffff;
+        }
+    }
     .editor {
         border-radius: 5px;
         height: 200px;

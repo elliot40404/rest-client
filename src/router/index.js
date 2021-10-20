@@ -10,6 +10,22 @@ const routes = [
         },
     },
     {
+        path: '/request',
+        name: 'Request',
+        component: () => import('../views/Request.vue'),
+        meta: {
+            title: 'Request',
+        },
+    },
+    {
+        path: '/response',
+        name: 'Response',
+        component: () => import('../views/Response.vue'),
+        meta: {
+            title: 'Response',
+        },
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: 'ERROR',
         component: () => import('../views/404.vue'),
