@@ -1,20 +1,21 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { VAceEditor } from 'vue3-ace-editor';
 import 'ace-builds/src-noconflict/mode-json5';
 import 'ace-builds/src-noconflict/theme-one_dark';
 
-const router = useRouter();
 const route = useRoute()
 
 onMounted(() => {
-    content.value = route.params.response;
+    if (route.params.response) {
+        content.value = route.params.response;
+    }
 })
 
 // -- bools
 
-const showHeaders = ref(true);
+const showHeaders = ref(false);
 
 // -- strings
 
@@ -87,7 +88,7 @@ const headers = ref([]);
 @import "../assets/main.scss";
 .container {
     padding: 30px 21px;
-    min-height: 100vh;
+    min-height: calc(100vh - 50px);
     width: 100vw;
     position: relative;
     display: flex;

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { VAceEditor } from 'vue3-ace-editor';
 import 'ace-builds/src-noconflict/mode-json5';
 import 'ace-builds/src-noconflict/theme-one_dark';
+import AddPopup from '../components/AddPopup.vue';
 
 const router = useRouter();
 
@@ -11,6 +12,8 @@ const router = useRouter();
 
 const showHeaders = ref(true);
 const showParams = ref(true);
+const showAddHeaders = ref(false);
+const showAddParams = ref(false);
 
 // -- strings
 
@@ -18,12 +21,15 @@ const url = ref('');
 const method = ref('GET');
 const body = ref('false');
 const content = ref('');
+const ekey = ref(null);
+const evalue = ref(null);
+const eindex = ref(null);
 
 //-- compute final request url
 
 const finalUrl = computed(() => {
     let uri = url.value;
-    if (uri.endsWith('?')) {
+    if (uri.endsWith('?') || uri.endsWith('/')) {
         uri = uri.substring(0, uri.length - 1);
     }
     if (params.value.length > 0) {
@@ -54,12 +60,28 @@ const finalUrl = computed(() => {
 
 // -- watchers
 
+// >> popup management
+
+watch(showAddHeaders, (newVal, oldVal) => {
+    if (newVal) {
+        showAddParams.value = false;
+    }
+});
+
+watch(showAddParams, (newVal, oldVal) => {
+    if (newVal) {
+        showAddHeaders.value = false;
+    }
+});
+
 // >> add path variables
+
 watch(url, () => {
     paramCheck();
 });
 
 const paramCheck = () => {
+    // TODO: fix me - this is a hack
     const uri = url.value;
     if (!uri.startsWith('http')) return params.value = [];
     if (!uri.split("/").some(x => x.startsWith(":"))) return params.value = [];
@@ -78,12 +100,7 @@ const paramCheck = () => {
 
 // -- arrays
 
-const headers = ref([
-    {
-        key: 'Content-Type',
-        value: 'application/json',
-    },
-]);
+const headers = ref([]);
 
 const params = ref([]);
 
@@ -100,38 +117,66 @@ const changeBody = (e) => {
 // -- event functions
 
 const addHeader = (e) => {
-    // open a pop to add a header and append to an existing array
-    // show popup with one select and one input
-    // on submit, add the header to the array
+    hide();
+    if (eindex.value !== null) {
+        if (ekey.value != e.key) {
+            headers.value[eindex.value]['key'] = e.key;
+        }
+        if (evalue.value != e.value) {
+            headers.value[eindex.value]['value'] = e.value;
+        }
+        eindex.value = null;
+        ekey.value = null;
+        evalue.value = null;
+        return;
+    } else {
+        headers.value.push({
+            key: e.key,
+            value: e.value,
+        });
+    }
 }
 
-const editHeader = (e) => {
-    // open a pop to edit a header and append to an existing array
-    // show popup with one select and one input
-    // on submit, edit the header to the array
+const editHeader = (key, index) => {
+    ekey.value = headers.value[index].key;
+    evalue.value = headers.value[index].value;
+    eindex.value = index;
+    showAddHeaders.value = true;
 }
 
-const removeHeader = (key, index) => {
-    // remove a header from the array
+const removeHeader = (key) => {
     headers.value = headers.value.filter(header => header.key !== key);
 }
 
 const addParam = (e) => {
-    // open a pop to add a param and append to an existing array
-    // figure out url or query param based on ':'
-    // show popup with two inputs
-    // on submit, add the param to the array
+    hide();
+    if (eindex.value !== null) {
+        if (ekey.value != e.key) {
+            params.value[eindex.value]['key'] = e.key;
+        }
+        if (evalue.value != e.value) {
+            params.value[eindex.value]['value'] = e.value;
+        }
+        eindex.value = null;
+        ekey.value = null;
+        evalue.value = null;
+        return;
+    } else {
+        params.value.push({
+            key: e.key,
+            value: e.value,
+        });
+    }
 }
 
-const editParam = (e) => {
-    // open a pop to edit a param and append to an existing array
-    // figure out url or query param based on ':'
-    // show popup with two inputs
-    // on submit, edit the param to the array
+const editParam = (key, index) => {
+    ekey.value = params.value[index].key;
+    evalue.value = params.value[index].value;
+    eindex.value = index;
+    showAddParams.value = true;
 }
 
-const removeParam = (key, index) => {
-    // remove a param from the array
+const removeParam = (key) => {
     params.value = params.value.filter(param => param.key !== key);
 }
 
@@ -157,10 +202,15 @@ const send = async () => {
     router.push({ name: 'Response', params: { response: JSON.stringify(res, null, 2) } });
 }
 
+const hide = () => {
+    showAddHeaders.value = false;
+    showAddParams.value = false;
+}
+
 </script>
 
 <template>
-    <div class="container">
+    <div @click="hide" class="container">
         <h1 class="heading">REST CLIENT</h1>
         <div class="urlbar">
             <h2>URL</h2>
@@ -187,7 +237,7 @@ const send = async () => {
             </select>
         </div>
         <div class="collapse">
-            <h2 @click="addHeader">
+            <h2 @click.stop="showAddHeaders = true">
                 ADD HEADERS
                 <ion-icon
                     v-if="showHeaders"
@@ -203,7 +253,7 @@ const send = async () => {
                             v-for="(header, index) in headers"
                             :key="index"
                             class="header"
-                            @click="editHeader(header.key, index)"
+                            @click.stop="editHeader(header.key, index)"
                         >
                             <h3>{{ header.key }}</h3>
                             <h3>{{ header.value }}</h3>
@@ -217,7 +267,7 @@ const send = async () => {
             </transition>
         </div>
         <div class="collapse">
-            <h2 @click="addParam">
+            <h2 @click.stop="showAddParams = true">
                 ADD PARAMS
                 <ion-icon
                     v-if="showParams"
@@ -233,7 +283,7 @@ const send = async () => {
                             v-for="(param, index) in params"
                             :key="param"
                             class="param"
-                            @click="editParam(param.key, index)"
+                            @click.stop="editParam(param.key, index)"
                         >
                             <h3>{{ param.key }}</h3>
                             <h3>{{ param.value }}</h3>
@@ -266,6 +316,14 @@ const send = async () => {
             </div>
         </div>
         <button v-if="url" @click="send" class="send">SEND REQUEST</button>
+        <AddPopup
+            @save="addHeader"
+            :ekey="ekey"
+            :evalue="evalue"
+            type="header"
+            v-if="showAddHeaders"
+        />
+        <AddPopup @save="addParam" :ekey="ekey" :evalue="evalue" type="query" v-if="showAddParams" />
     </div>
 </template>
 
@@ -273,7 +331,7 @@ const send = async () => {
 @import "../assets/main.scss";
 .container {
     padding: 30px 21px;
-    min-height: 100vh;
+    min-height: calc(100vh - 50px);
     width: 100vw;
     position: relative;
     display: flex;
